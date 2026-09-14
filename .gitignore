@@ -1,0 +1,10 @@
+.build/
+build/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+.swiftpm-tmp/
+.superdesign/
+.workbuddy/
+*.mobileprovision
+.env
