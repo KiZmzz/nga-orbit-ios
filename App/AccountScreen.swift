@@ -29,7 +29,7 @@ struct AccountView: View {
                     Text("账号密码在 NGA 网页内输入。会话保存在本机网站存储与钥匙串中；本原型没有代理服务器。")
                         .font(.footnote).foregroundStyle(AppTheme.inkSoft)
                     if let error = session.storageError { Text(error).foregroundStyle(AppTheme.alert) }
-                    Button("清除本机 NGA 会话", role: .destructive) {
+                    Button("退出登录并清除本地数据", role: .destructive) {
                         clearing = true
                         Task { await session.clear(); clearing = false }
                     }.disabled(clearing)

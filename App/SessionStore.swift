@@ -3,6 +3,12 @@ import WebKit
 import Security
 import NGAKit
 
+extension Notification.Name {
+    /// Sent after an explicit local sign-out so account-scoped UI stores can
+    /// discard both their persisted values and their currently displayed state.
+    static let ngaSessionDidClear = Notification.Name("nga.session-did-clear")
+}
+
 @MainActor @Observable final class SessionStore {
     var host: NGAHost {
         didSet { UserDefaults.standard.set(host.rawValue, forKey: "nga.host"); revision += 1 }
@@ -98,7 +104,8 @@ import NGAKit
         await websiteStore.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: ngaRecords)
         SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service] as CFDictionary)
         isLoggedIn = false; accountUID = nil; accountProfile = nil
-        status = "本机 NGA 会话已清除"; storageError = nil; revision += 1
+        status = "本机 NGA 会话与个人数据已清除"; storageError = nil; revision += 1
+        NotificationCenter.default.post(name: .ngaSessionDidClear, object: nil)
     }
 
     // MARK: Write actions (best effort; need a valid session)

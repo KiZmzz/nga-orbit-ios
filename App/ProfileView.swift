@@ -114,7 +114,7 @@ struct ProfileView: View {
             Task { await session.clear(); clearing = false }
         } label: {
             HStack {
-                Label("清除本机 NGA 会话", systemImage: "trash").foregroundStyle(.red).font(.subheadline.weight(.semibold))
+                Label("退出登录并清除本地数据", systemImage: "trash").foregroundStyle(.red).font(.subheadline.weight(.semibold))
                 Spacer()
                 if clearing { ProgressView().tint(.red) }
             }.padding(.horizontal, 14).padding(.vertical, 13)

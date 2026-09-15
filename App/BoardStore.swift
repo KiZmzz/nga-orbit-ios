@@ -45,6 +45,10 @@ import NGAKit
         return add(board)
     }
     func remove(at offsets: IndexSet) { boards.remove(atOffsets: offsets); persist() }
+    func clear() {
+        boards = []
+        UserDefaults.standard.removeObject(forKey: key)
+    }
 
     /// Drop entries created by the old manual-number flow and refresh saved
     /// names from the real catalogue. A valid favourite must correspond to a

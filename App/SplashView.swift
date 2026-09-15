@@ -57,8 +57,12 @@ struct AnimatedSplashView: View {
                 .shadow(color: .black.opacity(0.5), radius: 10, y: 3)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
-            .ignoresSafeArea()
         }
+        // Ignore the safe area on the GeometryReader itself so its measured
+        // height is the full display. Ignoring it only on the inner ZStack
+        // moved a safe-area-sized canvas without increasing that canvas,
+        // leaving the home-indicator region uncovered on physical devices.
+        .ignoresSafeArea()
         .background(Color(red: 0.02, green: 0.06, blue: 0.10))
         .onAppear {
             withAnimation(.easeOut(duration: 0.8)) { entered = true }

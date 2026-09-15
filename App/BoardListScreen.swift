@@ -34,6 +34,9 @@ struct BoardListView: View {
             .sheet(isPresented: $showingCatalog) { BoardCatalogView(session: session, store: store) }
             .sheet(item: $debugBoard) { board in TopicListView(board: board, session: session, store: store) }
             .onAppear { handleDebugLaunch() }
+            .onReceive(NotificationCenter.default.publisher(for: .ngaSessionDidClear)) { _ in
+                store.clear()
+            }
         }
     }
 

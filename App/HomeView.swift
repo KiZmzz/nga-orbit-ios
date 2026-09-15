@@ -26,6 +26,9 @@ struct HomeView: View {
         }
         .sceneCanvas()
         .sheet(isPresented: $showingAccount) { AccountView(session: session) }
+        .onReceive(NotificationCenter.default.publisher(for: .ngaSessionDidClear)) { _ in
+            history.clear()
+        }
     }
 
     @ViewBuilder private var recentSection: some View {
@@ -251,7 +254,10 @@ struct RecentTopic: Codable, Identifiable, Hashable {
         if items.count > 20 { items.removeLast(items.count - 20) }
         persist()
     }
-    func clear() { items = []; persist() }
+    func clear() {
+        items = []
+        UserDefaults.standard.removeObject(forKey: key)
+    }
     private func persist() {
         if let data = try? JSONEncoder().encode(items) { UserDefaults.standard.set(data, forKey: key) }
     }

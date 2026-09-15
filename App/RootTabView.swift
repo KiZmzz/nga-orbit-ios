@@ -38,6 +38,9 @@ struct RootTabView: View {
         .fullScreenCover(item: $debugTopic) { t in NavigationStack { ReaderView(topic: t, session: session) } }
         .sheet(isPresented: $demo) { DemoReaderView() }
         .onAppear { handleDebugLaunch() }
+        .onReceive(NotificationCenter.default.publisher(for: .ngaSessionDidClear)) { _ in
+            store.clear()
+        }
     }
 
     /// Dev helper: `--dsh-tab <0|1|2>`, `--dsh-board <fid>`, `--dsh-read <tid>`, `--dsh-demo`.
