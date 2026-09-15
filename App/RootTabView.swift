@@ -38,8 +38,10 @@ struct RootTabView: View {
         .fullScreenCover(item: $debugTopic) { t in NavigationStack { ReaderView(topic: t, session: session) } }
         .sheet(isPresented: $demo) { DemoReaderView() }
         .onAppear { handleDebugLaunch() }
-        .onReceive(NotificationCenter.default.publisher(for: .ngaSessionDidClear)) { _ in
-            store.clear()
+        .task(id: session.accountUID) {
+            guard session.isLoggedIn else { return }
+            guard let boards = try? await session.favoriteBoards(), !Task.isCancelled else { return }
+            store.replace(with: boards)
         }
     }
 

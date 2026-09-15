@@ -34,8 +34,10 @@ struct BoardListView: View {
             .sheet(isPresented: $showingCatalog) { BoardCatalogView(session: session, store: store) }
             .sheet(item: $debugBoard) { board in TopicListView(board: board, session: session, store: store) }
             .onAppear { handleDebugLaunch() }
-            .onReceive(NotificationCenter.default.publisher(for: .ngaSessionDidClear)) { _ in
-                store.clear()
+            .task(id: session.accountUID) {
+                guard session.isLoggedIn else { return }
+                guard let boards = try? await session.favoriteBoards(), !Task.isCancelled else { return }
+                store.replace(with: boards)
             }
         }
     }

@@ -11,6 +11,9 @@ struct HomeView: View {
     @Binding var tabBarVisibility: Visibility
     @State private var showingAccount = false
     @State private var history = ReadingHistoryStore.shared
+    @State private var favoriteFolders: [FavoriteFolder] = []
+    @State private var favoriteTopics: [HomeFavoriteTopic] = []
+    @State private var favoritesLoading = false
 
     var body: some View {
         ScrollView {
@@ -18,6 +21,7 @@ struct HomeView: View {
                 header
                 readingHero
                 boardSection
+                favoriteTopicSection
                 recentSection
             }
             .padding(.horizontal, AppTheme.pad)
@@ -26,13 +30,98 @@ struct HomeView: View {
         }
         .sceneCanvas()
         .sheet(isPresented: $showingAccount) { AccountView(session: session) }
-        .onReceive(NotificationCenter.default.publisher(for: .ngaSessionDidClear)) { _ in
-            history.clear()
+        .task(id: session.accountUID) { await loadFavoriteTopics() }
+    }
+
+    @ViewBuilder private var favoriteTopicSection: some View {
+        if session.isLoggedIn, favoritesLoading || !favoriteTopics.isEmpty {
+            VStack(alignment: .leading, spacing: 11) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("收藏主题").font(.title3.weight(.bold)).foregroundStyle(AppTheme.ink)
+                    Spacer()
+                    if !favoriteTopics.isEmpty {
+                        Text("\(favoriteTopics.count) 篇 · \(favoriteFolders.count) 个收藏夹")
+                            .font(.footnote).foregroundStyle(AppTheme.inkSoft)
+                    }
+                }
+                if favoritesLoading && favoriteTopics.isEmpty {
+                    HStack(spacing: 10) {
+                        ProgressView().tint(AppTheme.brand)
+                        Text("正在读取服务端收藏…").font(.subheadline).foregroundStyle(AppTheme.inkSoft)
+                    }
+                    .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                    .glassSurface(radius: 18)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(favoriteTopics.prefix(3).enumerated()), id: \.element.id) { index, item in
+                            NavigationLink {
+                                ReaderView(topic: item.topic, session: session, tabBarVisibility: $tabBarVisibility)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "star.fill")
+                                        .foregroundStyle(AppTheme.forumAccent)
+                                        .frame(width: 36, height: 36)
+                                        .background(AppTheme.forumAccentSoft, in: RoundedRectangle(cornerRadius: 10))
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.topic.subject).font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(AppTheme.ink).lineLimit(2)
+                                        Text(item.folderName).font(.caption).foregroundStyle(AppTheme.inkSoft)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption2.weight(.bold))
+                                        .foregroundStyle(AppTheme.inkSoft.opacity(0.55))
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 12)
+                            }.buttonStyle(.plain)
+                            if index < min(favoriteTopics.count, 3) - 1 {
+                                Divider().overlay(AppTheme.line.opacity(0.55)).padding(.leading, 62)
+                            }
+                        }
+                        NavigationLink {
+                            FavoriteTopicsView(session: session, tabBarVisibility: $tabBarVisibility)
+                        } label: {
+                            Text("查看全部收藏主题")
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(AppTheme.brand)
+                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        }.buttonStyle(.plain)
+                    }
+                    .glassSurface(radius: 20)
+                }
+            }
+        }
+    }
+
+    @MainActor private func loadFavoriteTopics() async {
+        guard session.isLoggedIn else {
+            favoriteFolders = []; favoriteTopics = []; favoritesLoading = false
+            return
+        }
+        favoritesLoading = true
+        defer { favoritesLoading = false }
+        do {
+            let folders = try await session.favoriteFolders()
+            var loaded: [HomeFavoriteTopic] = []
+            for folder in folders {
+                var page = 1
+                while !Task.isCancelled {
+                    let result = try await session.favoriteTopics(folderID: folder.id, page: page)
+                    loaded += result.topics.map { HomeFavoriteTopic(folder: folder, topic: $0) }
+                    guard result.hasMore else { break }
+                    page += 1
+                }
+            }
+            guard !Task.isCancelled, session.isLoggedIn else { return }
+            favoriteFolders = folders
+            favoriteTopics = loaded
+        } catch {
+            guard !Task.isCancelled else { return }
+            favoriteFolders = []
+            favoriteTopics = []
         }
     }
 
     @ViewBuilder private var recentSection: some View {
-        if history.items.count > 1 {
+        if session.isLoggedIn, history.items.count > 1 {
             VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .firstTextBaseline) {
                 Text("最近阅读").font(.title3.weight(.bold)).foregroundStyle(AppTheme.ink)
@@ -74,7 +163,7 @@ struct HomeView: View {
     }
 
     @ViewBuilder private var readingHero: some View {
-        if let item = history.items.first {
+        if session.isLoggedIn, let item = history.items.first {
             NavigationLink { ReaderView(topic: item.topic, board: item.board, session: session, tabBarVisibility: $tabBarVisibility) } label: {
                 ZStack(alignment: .bottomLeading) {
                     if let artwork = AppTheme.boardArtwork(for: item.board?.name) {
@@ -177,9 +266,26 @@ struct HomeView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("我的版块").font(.title3.weight(.bold)).foregroundStyle(AppTheme.ink)
                 Spacer()
-                Text("共 \(store.boards.count) 个收藏").font(.footnote).foregroundStyle(AppTheme.inkSoft)
+                Text(session.isLoggedIn ? "\(store.boards.count) 个收藏版块" : "登录后显示")
+                    .font(.footnote).foregroundStyle(AppTheme.inkSoft)
             }
-            if store.boards.isEmpty {
+            if !session.isLoggedIn {
+                Button { showingAccount = true } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.badge.key").font(.title3).foregroundStyle(AppTheme.brand)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("登录后查看个人版块").font(.headline).foregroundStyle(AppTheme.ink)
+                            Text("退出期间会隐藏，本机收藏将在重新登录后恢复显示。")
+                                .font(.caption).foregroundStyle(AppTheme.inkSoft)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                            .foregroundStyle(AppTheme.inkSoft.opacity(0.55))
+                    }
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .glassSurface(radius: 18)
+                }.buttonStyle(.plain)
+            } else if store.boards.isEmpty {
                 HStack(spacing: 12) {
                     Image(systemName: "star").font(.title3).foregroundStyle(AppTheme.brand)
                     VStack(alignment: .leading, spacing: 3) {
@@ -228,6 +334,13 @@ struct HomeView: View {
 
 }
 
+private struct HomeFavoriteTopic: Identifiable {
+    let folder: FavoriteFolder
+    let topic: Topic
+    var id: String { "\(folder.id)-\(topic.id)" }
+    var folderName: String { folder.name }
+}
+
 struct RecentTopic: Codable, Identifiable, Hashable {
     let id: Int
     let subject: String
@@ -254,10 +367,7 @@ struct RecentTopic: Codable, Identifiable, Hashable {
         if items.count > 20 { items.removeLast(items.count - 20) }
         persist()
     }
-    func clear() {
-        items = []
-        UserDefaults.standard.removeObject(forKey: key)
-    }
+    func clear() { items = []; persist() }
     private func persist() {
         if let data = try? JSONEncoder().encode(items) { UserDefaults.standard.set(data, forKey: key) }
     }

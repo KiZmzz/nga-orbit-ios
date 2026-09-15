@@ -3,12 +3,6 @@ import WebKit
 import Security
 import NGAKit
 
-extension Notification.Name {
-    /// Sent after an explicit local sign-out so account-scoped UI stores can
-    /// discard both their persisted values and their currently displayed state.
-    static let ngaSessionDidClear = Notification.Name("nga.session-did-clear")
-}
-
 @MainActor @Observable final class SessionStore {
     var host: NGAHost {
         didSet { UserDefaults.standard.set(host.rawValue, forKey: "nga.host"); revision += 1 }
@@ -104,8 +98,7 @@ extension Notification.Name {
         await websiteStore.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: ngaRecords)
         SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service] as CFDictionary)
         isLoggedIn = false; accountUID = nil; accountProfile = nil
-        status = "本机 NGA 会话与个人数据已清除"; storageError = nil; revision += 1
-        NotificationCenter.default.post(name: .ngaSessionDidClear, object: nil)
+        status = "已退出登录；本地阅读记录与版块收藏已保留"; storageError = nil; revision += 1
     }
 
     // MARK: Write actions (best effort; need a valid session)
@@ -175,6 +168,9 @@ extension Notification.Name {
     }
     func favoriteBoard(fid: Int, add: Bool = true) async throws {
         try await NGAClient(host: host).favoriteBoard(fid: fid, add: add, cookie: await cookieHeader(for: host))
+    }
+    func favoriteBoards() async throws -> [Board] {
+        try await NGAClient(host: host).favoriteBoards(cookie: await cookieHeader(for: host))
     }
 
     // MARK: Messages

@@ -471,6 +471,14 @@ public actor NGAClient {
         _ = try ResponseDecoder.decode(data, status: response.statusCode, charset: response.textEncodingName)
     }
 
+    /// Boards saved in the signed-in user's NGA account.
+    public func favoriteBoards(cookie: String? = nil) async throws -> [Board] {
+        let form = ["__lib": "forum_favor2", "__act": "forum_favor", "action": "get", "raw": "3"]
+        let (data, response) = try await post(path: "nuke.php", form: form, cookie: cookie, addOutput: false)
+        return try ResponseDecoder.favoriteBoards(from: data, status: response.statusCode,
+                                                   charset: response.textEncodingName)
+    }
+
     /// A direct GET that does not inject `__output`/`__inchst` (used for static CDN files).
     private func rawGet(_ url: URL, cookie: String?) async throws -> (Data, HTTPURLResponse) {
         var request = URLRequest(url: url)

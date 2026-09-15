@@ -114,7 +114,7 @@ struct ProfileView: View {
             Task { await session.clear(); clearing = false }
         } label: {
             HStack {
-                Label("退出登录并清除本地数据", systemImage: "trash").foregroundStyle(.red).font(.subheadline.weight(.semibold))
+                Label("退出登录", systemImage: "rectangle.portrait.and.arrow.right").foregroundStyle(.red).font(.subheadline.weight(.semibold))
                 Spacer()
                 if clearing { ProgressView().tint(.red) }
             }.padding(.horizontal, 14).padding(.vertical, 13)
@@ -214,7 +214,7 @@ private struct ProfileRowContent: View {
     }
 }
 
-private struct FavoriteTopicsView: View {
+struct FavoriteTopicsView: View {
     let session: SessionStore
     let tabBarVisibility: Binding<Visibility>
     @State private var folders: [FavoriteFolder] = []

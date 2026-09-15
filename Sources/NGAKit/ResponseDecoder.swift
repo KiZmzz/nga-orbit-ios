@@ -192,6 +192,35 @@ public enum ResponseDecoder {
                          headerTopicID: integer(forum["topped_topic"]))
     }
 
+    /// Decode `forum_favor2`'s nested numeric maps into concrete boards.
+    public static func favoriteBoards(from data: Data, status: Int = 200, charset: String? = nil) throws -> [Board] {
+        let body = try decode(data, status: status, charset: charset)
+        var boards: [Board] = []
+        var seen = Set<Int>()
+
+        func walk(_ value: Any) {
+            if let row = value as? [String: Any] {
+                if let fid = integer(row["fid"] ?? row["id"]), fid != 0,
+                   row["fid"] != nil, seen.insert(fid).inserted {
+                    let name = HTMLText.decode(string(row["name"] ?? row["title"]))
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !name.isEmpty { boards.append(Board(id: fid, name: name)) }
+                }
+                let keys = row.keys.sorted { lhs, rhs in
+                    if let left = Int(lhs), let right = Int(rhs) { return left < right }
+                    if Int(lhs) != nil { return true }
+                    if Int(rhs) != nil { return false }
+                    return lhs < rhs
+                }
+                for key in keys { if let child = row[key] { walk(child) } }
+            } else if let list = value as? [Any] {
+                for child in list { walk(child) }
+            }
+        }
+        walk(body)
+        return boards
+    }
+
     /// Decode the official app's `subject` service (`result.data`).
     public static func appTopics(from data: Data, status: Int = 200, charset: String? = nil,
                                  page: Int, sticky: Bool = false, digest: Bool = false) throws -> TopicPage {

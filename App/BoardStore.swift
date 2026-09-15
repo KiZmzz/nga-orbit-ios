@@ -45,9 +45,13 @@ import NGAKit
         return add(board)
     }
     func remove(at offsets: IndexSet) { boards.remove(atOffsets: offsets); persist() }
-    func clear() {
-        boards = []
-        UserDefaults.standard.removeObject(forKey: key)
+
+    func replace(with remoteBoards: [Board]) {
+        var seen = Set<Int>()
+        let revised = remoteBoards.filter { $0.id != 0 && seen.insert($0.id).inserted }
+        guard revised != boards else { return }
+        boards = revised
+        persist()
     }
 
     /// Drop entries created by the old manual-number flow and refresh saved

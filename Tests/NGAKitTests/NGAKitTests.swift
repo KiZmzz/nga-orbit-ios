@@ -26,6 +26,13 @@ import Testing
     #expect(body["note"] as? String == "} stays in text")
 }
 
+@Test func favoriteBoardsDecodeFromSignedInForumResponse() throws {
+    let response = #"<html><body><script>window.script_muti_get_var_store={"data":{"0":{"0":{"id":320,"fid":320,"name":"黑锋要塞 - Ebon Hold","info":""},"1":{"id":7,"fid":7,"name":"艾泽拉斯议事厅 - Hall of Azeroth","info":""},"2":{"id":2,"fid":2,"name":"艾泽拉斯国家地理","info":""},"3":{"id":-7955747,"fid":-7955747,"name":"晴风村","info":""}}}}</script></body></html>"#
+    let boards = try ResponseDecoder.favoriteBoards(from: Data(response.utf8))
+    #expect(boards.map(\.id) == [320, 7, 2, -7955747])
+    #expect(boards.map(\.name) == ["黑锋要塞 - Ebon Hold", "艾泽拉斯议事厅 - Hall of Azeroth", "艾泽拉斯国家地理", "晴风村"])
+}
+
 @Test func javascriptIsNeverExecutedOrAccepted() {
     #expect(throws: NGAError.invalidResponse("NGA 返回的数据格式暂不受支持")) {
         try ResponseDecoder.decode(Data("{data: alert('unsafe')}".utf8))
