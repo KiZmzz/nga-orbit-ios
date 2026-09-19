@@ -285,7 +285,11 @@ public enum ResponseDecoder {
         }
         let uid = string(row["uid"] ?? row["authorid"] ?? row["id"])
         let name = optionalText(["username", "name"]) ?? fallback.name
-        let avatar = BBCode.avatarURL(string(row["avatar"] ?? row["avatar_url"] ?? row["avatarUrl"] ?? row["face"] ?? row["icon"])) ?? fallback.avatar
+        let rawAvatar: String = {
+            let v = row["avatar"] ?? row["avatar_url"] ?? row["avatarUrl"] ?? row["face"] ?? row["icon"]
+            return string(v)
+        }()
+        let avatar = BBCode.avatarURL(rawAvatar) ?? fallback.avatar
         return NGAUser(uid: uid.isEmpty ? fallback.uid : uid, name: name, avatar: avatar,
                        groupTitle: optionalText(["groupname", "group_name"]) ?? fallback.groupTitle,
                        memberTitle: optionalText(["membertitle", "member_title", "title"]) ?? fallback.memberTitle,
@@ -458,8 +462,12 @@ public enum ResponseDecoder {
             let user = users[uid] ?? [:]
             let username = string(user["username"] ?? user["name"] ?? row["author"] ?? row["username"])
             let author = username.hasPrefix("#anony_") ? "匿名用户" : (username.isEmpty ? (uid.isEmpty ? "用户" : "UID \(uid)") : HTMLText.decode(username))
-            let avatar = BBCode.avatarURL(string(user["avatar"] ?? user["avatar_url"] ?? user["avatarUrl"] ?? user["face"] ?? user["icon"]
-                ?? row["avatar"] ?? row["avatar_url"] ?? row["avatarUrl"] ?? row["face"] ?? row["icon"]))
+            let rawAvatar: String = {
+                let u = user["avatar"] ?? user["avatar_url"] ?? user["avatarUrl"] ?? user["face"] ?? user["icon"]
+                let r = row["avatar"] ?? row["avatar_url"] ?? row["avatarUrl"] ?? row["face"] ?? row["icon"]
+                return string(u ?? r)
+            }()
+            let avatar = BBCode.avatarURL(rawAvatar)
             let profile = userProfile(uid: uid, author: author, avatar: avatar, record: user)
             let images = attachmentImageURLs(row["attachs"] ?? row["attachments"] ?? row["attach"])
             let scoreTuple = string(row["score"]).split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
