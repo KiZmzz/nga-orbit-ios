@@ -6,7 +6,6 @@ on:
 jobs:
   build:
     runs-on: macos-14
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
