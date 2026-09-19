@@ -1,0 +1,40 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode
+      run: |
+        sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+        xcodebuild -version
+
+    - name: Build for iOS
+      run: |
+        xcodebuild -project NGAReader.xcodeproj \
+          -scheme NGAReader \
+          -configuration Release \
+          -derivedDataPath build \
+          -destination 'generic/platform=iOS' \
+          CODE_SIGNING_ALLOWED=NO
+
+    - name: Create IPA
+      run: |
+        mkdir -p Payload
+        cp -r build/Build/Products/Release-iphoneos/NGAReader.app Payload/
+        zip -r NGAReader.ipa Payload/
+        rm -rf Payload
+
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: NGA-Orbit-iOS
+        path: NGAReader.ipa
+        retention-days: 30
